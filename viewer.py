@@ -56,38 +56,68 @@ line.draw(pyglet.gl.GL_LINE_STRIP)
 
 
 def update(dt):
-    window.clear()
-    line.draw(pyglet.gl.GL_LINE_STRIP)
     move(keys)
 
 @window.event
 def on_draw():
-    pass
+    window.clear()
+    line.draw(pyglet.gl.GL_LINE_STRIP)
 
 
 # for finding out what is being pressed
 #event_logger = pyglet.window.event.WindowEventLogger()
 #window.push_handlers(event_logger)
+pos = [0,0,0]
+state = False
+# xyz
+# w,s affect z axis
+# a,d affect x
+# space ctrl affect y
 
 def move(keys):
     unit = 1
     if keys[key.W]:
-        glTranslatef(0,-unit,0)
+        glTranslatef(0,0,unit)
+        pos[2] += unit
+    if keys[key.S]:
+        glTranslatef(0,0,-unit)
+        pos[2] -= unit
     if keys[key.A]:
         glTranslatef(unit,0,0)
-    if keys[key.S]:
-        glTranslatef(0,unit,0)
+        pos[0] += unit
     if keys[key.D]:
         glTranslatef(-unit,0,0)
-    if keys[key.LCTRL]:
-        glTranslatef(0,0,-unit)
+        pos[0] -= unit
     if keys[key.SPACE]:
-        glTranslatef(0,0,unit)
+        glTranslatef(0,-unit,0)
+        pos[1] -= unit
+    if keys[key.LCTRL]:
+        glTranslatef(0,unit,0)
+        pos[1] += unit
+
+@window.event
+def on_key_press(symbol, modifiers):
+    if symbol == key.ESCAPE:
+        window.close()
+    if symbol == key.E:
+        window.set_exclusive_mouse(True)
+    if symbol == key.R:
+        window.set_exclusive_mouse(False)
+
+
+
+@window.event
+def on_mouse_motion(x,y,dx, dy):
+    glTranslatef(-pos[0],-pos[1],-pos[2])
+    glRotatef(1, -dy, dx, 0)
+    glTranslatef(pos[0],pos[1],pos[2])
 
 
 glClearColor(.1,.1,.1,1)
 window.projection = pyglet.window.Projection3D()
 keys = key.KeyStateHandler()
 window.push_handlers(keys)
+dir(window)
+window.set_exclusive_mouse(False)
 pyglet.clock.schedule_interval(update,1/60)
 pyglet.app.run()
