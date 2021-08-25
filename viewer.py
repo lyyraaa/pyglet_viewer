@@ -2,7 +2,7 @@ import pyglet
 from pyglet.window import key
 from pyglet.gl import *
 
-window = pyglet.window.Window()
+
 
 #https://en.wikipedia.org/wiki/Lorenz_system
 class Lorenz():
@@ -50,74 +50,79 @@ for step in range(STEPS):
 line = pyglet.graphics.vertex_list(STEPS, 'v3f/static', 'c3B/static')
 line.vertices = line_coords
 line.colors = [255]*3*STEPS
-line.draw(pyglet.gl.GL_LINE_STRIP)
+
 
 ###################################################################################
 
+class Window(pyglet.window.Window):
 
-def update(dt):
-    move(keys)
+    def __init__(self, line, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.projection = pyglet.window.Projection3D()
+        pyglet.clock.schedule(self.update)
 
-@window.event
-def on_draw():
-    window.clear()
-    line.draw(pyglet.gl.GL_LINE_STRIP)
+        self.line = line
 
+        self.pos = [0,0,0]
+        self.focused = False
+
+    def on_draw(self):
+        self.clear()
+        self.line.draw(pyglet.gl.GL_LINE_STRIP)
+
+    def on_key_press(self, symbol, modifiers):
+        if symbol == key.ESCAPE:
+            self.close()
+        if symbol == key.E:
+            self.toggle_focus()
+
+    def on_mouse_motion(self, x, y, dx, dy):
+        if self.focused:
+            glTranslatef(-self.pos[0],-self.pos[1],-self.pos[2])
+            glRotatef(1, -dy, dx, 0)
+            glTranslatef(self.pos[0],self.pos[1],self.pos[2])
+
+    def update(self,dt):
+        self.move(keys)
+
+    def toggle_focus(self):
+        self.focused = not self.focused
+        self.set_exclusive_mouse(self.focused)
+
+    def move(self, keys):
+        unit = 1
+        if keys[key.W]:
+            glTranslatef(0,0,unit)
+            self.pos[2] += unit
+        if keys[key.S]:
+            glTranslatef(0,0,-unit)
+            self.pos[2] -= unit
+        if keys[key.A]:
+            glTranslatef(unit,0,0)
+            self.pos[0] += unit
+        if keys[key.D]:
+            glTranslatef(-unit,0,0)
+            self.pos[0] -= unit
+        if keys[key.SPACE]:
+            glTranslatef(0,-unit,0)
+            self.pos[1] -= unit
+        if keys[key.LCTRL]:
+            glTranslatef(0,unit,0)
+            self.pos[1] += unit
 
 # for finding out what is being pressed
 #event_logger = pyglet.window.event.WindowEventLogger()
 #window.push_handlers(event_logger)
-pos = [0,0,0]
-state = False
-# xyz
-# w,s affect z axis
-# a,d affect x
-# space ctrl affect y
-
-def move(keys):
-    unit = 1
-    if keys[key.W]:
-        glTranslatef(0,0,unit)
-        pos[2] += unit
-    if keys[key.S]:
-        glTranslatef(0,0,-unit)
-        pos[2] -= unit
-    if keys[key.A]:
-        glTranslatef(unit,0,0)
-        pos[0] += unit
-    if keys[key.D]:
-        glTranslatef(-unit,0,0)
-        pos[0] -= unit
-    if keys[key.SPACE]:
-        glTranslatef(0,-unit,0)
-        pos[1] -= unit
-    if keys[key.LCTRL]:
-        glTranslatef(0,unit,0)
-        pos[1] += unit
-
-@window.event
-def on_key_press(symbol, modifiers):
-    if symbol == key.ESCAPE:
-        window.close()
-    if symbol == key.E:
-        window.set_exclusive_mouse(True)
-    if symbol == key.R:
-        window.set_exclusive_mouse(False)
 
 
 
-@window.event
-def on_mouse_motion(x,y,dx, dy):
-    glTranslatef(-pos[0],-pos[1],-pos[2])
-    glRotatef(1, -dy, dx, 0)
-    glTranslatef(pos[0],pos[1],pos[2])
 
 
-glClearColor(.1,.1,.1,1)
-window.projection = pyglet.window.Projection3D()
+
+
+window = Window(line)
 keys = key.KeyStateHandler()
 window.push_handlers(keys)
-dir(window)
-window.set_exclusive_mouse(False)
-pyglet.clock.schedule_interval(update,1/60)
+
+glClearColor(.1,.1,.1,1)
 pyglet.app.run()
