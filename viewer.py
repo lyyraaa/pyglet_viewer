@@ -1,6 +1,7 @@
 import pyglet
 from pyglet.window import key
 from pyglet.gl import *
+import math
 
 
 
@@ -53,76 +54,118 @@ line.colors = [255]*3*STEPS
 
 
 ###################################################################################
+# https://github.com/jjstrydom/pyglet_examples/blob/master/minecraft_block.py
 
-class Window(pyglet.window.Window):
 
-    def __init__(self, line, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.projection = pyglet.window.Projection3D()
-        pyglet.clock.schedule(self.update)
-
-        self.line = line
-
-        self.pos = [0,0,0]
-        self.focused = False
-
-    def on_draw(self):
-        self.clear()
-        self.line.draw(pyglet.gl.GL_LINE_STRIP)
-
-    def on_key_press(self, symbol, modifiers):
-        if symbol == key.ESCAPE:
-            self.close()
-        if symbol == key.E:
-            self.toggle_focus()
-
-    def on_mouse_motion(self, x, y, dx, dy):
-        if self.focused:
-            glTranslatef(-self.pos[0],-self.pos[1],-self.pos[2])
-            glRotatef(1, -dy, dx, 0)
-            glTranslatef(self.pos[0],self.pos[1],self.pos[2])
-
-    def update(self,dt):
-        self.move(keys)
-
-    def toggle_focus(self):
-        self.focused = not self.focused
-        self.set_exclusive_mouse(self.focused)
-
-    def move(self, keys):
-        unit = 1
-        if keys[key.W]:
-            glTranslatef(0,0,unit)
-            self.pos[2] += unit
-        if keys[key.S]:
-            glTranslatef(0,0,-unit)
-            self.pos[2] -= unit
-        if keys[key.A]:
-            glTranslatef(unit,0,0)
-            self.pos[0] += unit
-        if keys[key.D]:
-            glTranslatef(-unit,0,0)
-            self.pos[0] -= unit
-        if keys[key.SPACE]:
-            glTranslatef(0,-unit,0)
-            self.pos[1] -= unit
-        if keys[key.LCTRL]:
-            glTranslatef(0,unit,0)
-            self.pos[1] += unit
 
 # for finding out what is being pressed
 #event_logger = pyglet.window.event.WindowEventLogger()
 #window.push_handlers(event_logger)
 
+class Player:
+    def __init__(self, pos=(0, 0, 0), rot=(0, 0)):
+        self.pos = list(pos)
+        self.rot = list(rot)
 
+    def mouse_motion(self, dx, dy):
+        dx/= 8
+        dy/= 8
+        self.rot[0] += dy
+        self.rot[1] -= dx
+        if self.rot[0]>90:
+            self.rot[0] = 90
+        elif self.rot[0] < -90:
+            self.rot[0] = -90
 
+    def update(self,dt,keys):
+        sens = 0.1
+        s = dt*10
+        rotY = -self.rot[1]/180*math.pi
+        dx, dz = s*math.sin(rotY), math.cos(rotY)
+        if keys[key.W]:
+            self.pos[0] += dx*sens
+            self.pos[2] -= dz*sens
+        if keys[key.S]:
+            self.pos[0] -= dx*sens
+            self.pos[2] += dz*sens
+        if keys[key.A]:
+            self.pos[0] -= dz*sens
+            self.pos[2] -= dx*sens
+        if keys[key.D]:
+            self.pos[0] += dz*sens
+            self.pos[2] += dx*sens
+        if keys[key.SPACE]:
+            self.pos[1] += s
+        if keys[key.LSHIFT]:
+            self.pos[1] -= s
 
+class Window(pyglet.window.Window):
 
+    def push(self,pos,rot):
+        glPushMatrix()
+        rot = self.player.rot
+        pos = self.player.pos
+        glRotatef(-rot[0],1,0,0)
+        glRotatef(-rot[1],0,1,0)
+        glTranslatef(-pos[0], -pos[1], -pos[2])
 
+    def Projection(self):
+        glMatrixMode(GL_PROJECTION)
+        glLoadIdentity()
 
-window = Window(line)
-keys = key.KeyStateHandler()
-window.push_handlers(keys)
+    def Model(self):
+        glMatrixMode(GL_MODELVIEW)
+        glLoadIdentity()
 
-glClearColor(.1,.1,.1,1)
-pyglet.app.run()
+    def set2d(self):
+        self.Projection()
+        gluPerspective(0, self.width, 0, self.height)
+        self.Model()
+
+    def set3d(self):
+        self.Projection()
+        gluPerspective(70, self.width/self.height, 0.05, 1000)
+        self.Model()
+
+    def setLock(self, state):
+        self.lock = state
+        self.set_exclusive_mouse(state)
+
+    lock = False
+    mouse_lock = property(lambda self:self.lock, setLock)
+
+    def __init__(self, line,*args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.set_minimum_size(300,200)
+        self.keys = key.KeyStateHandler()
+        self.push_handlers(self.keys)
+        pyglet.clock.schedule(self.update)
+
+        self.model = line
+        self.player = Player((0.5,1.5,1.5),(-30,0))
+
+    def on_mouse_motion(self,x,y,dx,dy):
+        if self.mouse_lock: self.player.mouse_motion(dx,dy)
+
+    def on_key_press(self, KEY, _MOD):
+        if KEY == key.ESCAPE:
+            self.close()
+        elif KEY == key.E:
+            self.mouse_lock = not self.mouse_lock
+
+    def update(self, dt):
+        self.player.update(dt, self.keys)
+
+    def on_draw(self):
+        self.clear()
+        self.set3d()
+        self.push(self.player.pos,self.player.rot)
+        self.model.draw(pyglet.gl.GL_LINE_STRIP)
+        glPopMatrix()
+
+if __name__ == '__main__':
+    window = Window(line,width=400, height=300, caption='My caption',resizable=True)
+    glClearColor(0.5,0.7,1,1)
+    glEnable(GL_DEPTH_TEST)
+    #glEnable(GL_CULL_FACE)
+    pyglet.app.run()
