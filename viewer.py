@@ -2,7 +2,7 @@ import pyglet
 from pyglet.window import key
 from pyglet.gl import *
 import math
-
+import pyglet_gui
 
 
 #https://en.wikipedia.org/wiki/Lorenz_system
@@ -66,6 +66,8 @@ class Player:
     def __init__(self, pos=(0, 0, 0), rot=(0, 0)):
         self.pos = list(pos)
         self.rot = list(rot)
+        self.initpos = list(pos)
+        self.initrot = list(rot)
 
     def mouse_motion(self, dx, dy):
         dx/= 8
@@ -99,7 +101,13 @@ class Player:
         if keys[key.LSHIFT]:
             self.pos[1] -= s
 
-class Window(pyglet.window.Window):
+    def reset(self):
+        self.pos = self.initpos
+        self.rot = self.initrot
+
+
+
+class Window3D(pyglet.window.Window):
 
     def push(self,pos,rot):
         glPushMatrix()
@@ -164,8 +172,62 @@ class Window(pyglet.window.Window):
         glPopMatrix()
 
 if __name__ == '__main__':
-    window = Window(line,width=400, height=300, caption='My caption',resizable=True)
+    window3D = Window3D(line,width=400, height=300, caption='Model',resizable=True)
     glClearColor(0.5,0.7,1,1)
     glEnable(GL_DEPTH_TEST)
-    #glEnable(GL_CULL_FACE)
+
+    windowUI = pyglet.window.Window(width=400, height=300, caption='UI',resizable=True)
+    batch = pyglet.graphics.Batch()
+
+    from pyglet_gui.theme import Theme
+    from pyglet_gui.manager import Manager
+
+    @windowUI.event
+    def on_draw():
+        windowUI.clear()
+        batch.draw()
+
+
+    theme = Theme({"font": "Lucida Grande",
+               "font_size": 12,
+               "text_color": [255, 255, 255, 255],
+               "gui_color": [255, 0, 0, 255],
+               "button": {
+                   "down": {
+                       "image": {
+                           "source": "button-down.png",
+                           "frame": [8, 6, 2, 2],
+                           "padding": [18, 18, 8, 6]
+                       },
+                       "text_color": [0, 0, 0, 255]
+                   },
+                   "up": {
+                       "image": {
+                           "source": "button.png",
+                           "frame": [6, 5, 6, 3],
+                           "padding": [18, 18, 8, 6]
+                       }
+                   }
+               }
+              }, resources_path='theme/')
+
+
+    from pyglet_gui.buttons import Button
+
+    # just to print something to the console, is optional.
+    def callback(is_pressed):
+        window3D.player.reset()
+        print('Button was pressed to state', is_pressed)
+
+    button = Button('Hello world', on_press=callback)
+
+    Manager(button, window=windowUI, theme=theme, batch=batch)
+
+
+
+
+
+
+
+
     pyglet.app.run()
