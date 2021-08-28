@@ -2,7 +2,17 @@ import pyglet
 from pyglet.window import key
 from pyglet.gl import *
 import math
+
 import pyglet_gui
+from pyglet_gui.theme import Theme
+from pyglet_gui.manager import Manager
+from pyglet_gui.buttons import Button
+from pyglet_gui.containers import VerticalContainer
+from pyglet_gui.sliders import HorizontalSlider
+
+
+from copy import deepcopy
+
 
 
 #https://en.wikipedia.org/wiki/Lorenz_system
@@ -57,11 +67,6 @@ line.colors = [255]*3*STEPS
 # https://github.com/jjstrydom/pyglet_examples/blob/master/minecraft_block.py
 
 
-
-# for finding out what is being pressed
-#event_logger = pyglet.window.event.WindowEventLogger()
-#window.push_handlers(event_logger)
-
 class Player:
     def __init__(self, pos=(0, 0, 0), rot=(0, 0)):
         self.pos = list(pos)
@@ -102,10 +107,9 @@ class Player:
             self.pos[1] -= s
 
     def reset(self):
-        self.pos = self.initpos
-        self.rot = self.initrot
-
-
+        print(self.initpos)
+        self.pos = self.initpos[:]
+        self.rot = self.initrot[:]
 
 class Window3D(pyglet.window.Window):
 
@@ -139,10 +143,13 @@ class Window3D(pyglet.window.Window):
         self.lock = state
         self.set_exclusive_mouse(state)
 
+    def getPlayer(self):
+        return self.player
+
     lock = False
     mouse_lock = property(lambda self:self.lock, setLock)
 
-    def __init__(self, line,*args, **kwargs):
+    def __init__(self, line, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.set_minimum_size(300,200)
         self.keys = key.KeyStateHandler()
@@ -171,63 +178,97 @@ class Window3D(pyglet.window.Window):
         self.model.draw(pyglet.gl.GL_LINE_STRIP)
         glPopMatrix()
 
-if __name__ == '__main__':
-    window3D = Window3D(line,width=400, height=300, caption='Model',resizable=True)
-    glClearColor(0.5,0.7,1,1)
-    glEnable(GL_DEPTH_TEST)
+class WindowUI(pyglet.window.Window):
 
-    windowUI = pyglet.window.Window(width=400, height=300, caption='UI',resizable=True)
-    batch = pyglet.graphics.Batch()
+    def __init__(self, window3D, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-    from pyglet_gui.theme import Theme
-    from pyglet_gui.manager import Manager
+        self.window3D = window3D
 
-    @windowUI.event
-    def on_draw():
-        windowUI.clear()
-        batch.draw()
+        self.batch = pyglet.graphics.Batch()
 
-
-    theme = Theme({"font": "Lucida Grande",
-               "font_size": 12,
-               "text_color": [255, 255, 255, 255],
-               "gui_color": [255, 0, 0, 255],
-               "button": {
-                   "down": {
+        self.theme = Theme(
+            {"font": "Lucida Grande",
+            "font_size": 12,
+            "text_color": [255, 255, 255, 255],
+            "gui_color": [255, 0, 0, 255],
+            "button": {
+                "down": {
+                    "image": {
+                        "source": "button-down.png",
+                        "frame": [8, 6, 2, 2],
+                        "padding": [18, 18, 8, 6]
+                        },
+                    "text_color": [0, 0, 0, 255]
+                    },
+                "up": {
+                    "image": {
+                        "source": "button.png",
+                        "frame": [6, 5, 6, 3],
+                        "padding": [18, 18, 8, 6]
+                        }
+                    }
+                },
+            "slider": {
+                   "knob": {
                        "image": {
-                           "source": "button-down.png",
-                           "frame": [8, 6, 2, 2],
-                           "padding": [18, 18, 8, 6]
+                           "source": "slider-knob.png"
                        },
-                       "text_color": [0, 0, 0, 255]
+                       "offset": [-5, -11]
                    },
-                   "up": {
+                   "padding": [8, 8, 8, 8],
+                   "step": {
                        "image": {
-                           "source": "button.png",
-                           "frame": [6, 5, 6, 3],
-                           "padding": [18, 18, 8, 6]
+                           "source": "slider-step.png"
+                       },
+                       "offset": [-2, -8]
+                   },
+                   "bar": {
+                       "image": {
+                           "source": "slider-bar.png",
+                           "frame": [8, 8, 8, 0],
+                           "padding": [8, 8, 8, 8]
                        }
                    }
                }
-              }, resources_path='theme/')
+            }, resources_path='theme/')
+
+        button_reset = Button('RESET POS', on_press=self.callback)
+
+        button_col = Button('CHANGE COL', on_press=self.change_col)
+
+        self.sliderR = HorizontalSlider()
+        self.sliderG = HorizontalSlider()
+        self.sliderB = HorizontalSlider()
+        #button2 = Button('CHANGE COLOUR', on_press=self.callback)
+
+        Manager(\
+            content=VerticalContainer([self.sliderR, self.sliderG, self.sliderB, button_col, button_reset]),
+            window=self,
+            theme=self.theme,
+            batch=self.batch)
 
 
-    from pyglet_gui.buttons import Button
+    def on_draw(self):
+        self.clear()
+        self.batch.draw()
 
-    # just to print something to the console, is optional.
-    def callback(is_pressed):
-        window3D.player.reset()
-        print('Button was pressed to state', is_pressed)
+    def callback(self,is_pressed):
+        self.window3D.getPlayer().reset()
 
-    button = Button('Hello world', on_press=callback)
-
-    Manager(button, window=windowUI, theme=theme, batch=batch)
-
-
+    def change_col(self,is_pressed):
+        colvalRGB = [int(255*self.sliderR.value),int(255*self.sliderG.value),int(255*self.sliderB.value)]
+        self.window3D.model.colors = colvalRGB*STEPS
 
 
+if __name__ == '__main__':
+
+    window3D = Window3D(line, width=400, height=300, caption='Model',resizable=True)
+    glClearColor(0.5,0.7,1,1)
+    glEnable(GL_DEPTH_TEST)
 
 
+    windowUI = WindowUI(window3D,width=400, height=300, caption='UI',resizable=True)
 
 
     pyglet.app.run()
