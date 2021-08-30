@@ -240,7 +240,6 @@ class WindowUI(pyglet.window.Window):
         self.sliderR = HorizontalSlider()
         self.sliderG = HorizontalSlider()
         self.sliderB = HorizontalSlider()
-        #button2 = Button('CHANGE COLOUR', on_press=self.callback)
 
         Manager(\
             content=VerticalContainer([self.sliderR, self.sliderG, self.sliderB, button_col, button_reset]),
