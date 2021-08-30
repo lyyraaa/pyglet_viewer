@@ -7,8 +7,9 @@ import pyglet_gui
 from pyglet_gui.theme import Theme
 from pyglet_gui.manager import Manager
 from pyglet_gui.buttons import Button
-from pyglet_gui.containers import VerticalContainer
+from pyglet_gui.containers import VerticalContainer, HorizontalContainer, Spacer
 from pyglet_gui.sliders import HorizontalSlider
+from pyglet_gui.gui import Label
 
 
 from copy import deepcopy
@@ -65,7 +66,7 @@ line.colors = [255]*3*STEPS
 
 ###################################################################################
 # https://github.com/jjstrydom/pyglet_examples/blob/master/minecraft_block.py
-
+#https://github.com/jorgecarleitao/pyglet-gui/tree/master/examples
 
 class Player:
     def __init__(self, pos=(0, 0, 0), rot=(0, 0)):
@@ -136,7 +137,7 @@ class Window3D(pyglet.window.Window):
 
     def set3d(self):
         self.Projection()
-        gluPerspective(70, self.width/self.height, 0.05, 1000)
+        gluPerspective(self.fov, self.width/self.height, 0.05, 1000)
         self.Model()
 
     def setLock(self, state):
@@ -145,6 +146,7 @@ class Window3D(pyglet.window.Window):
 
     def getPlayer(self):
         return self.player
+
 
     lock = False
     mouse_lock = property(lambda self:self.lock, setLock)
@@ -155,6 +157,7 @@ class Window3D(pyglet.window.Window):
         self.keys = key.KeyStateHandler()
         self.push_handlers(self.keys)
         pyglet.clock.schedule(self.update)
+        self.fov=70
 
         self.model = line
         self.player = Player((0.5,1.5,1.5),(-30,0))
@@ -167,6 +170,9 @@ class Window3D(pyglet.window.Window):
             self.close()
         elif KEY == key.E:
             self.mouse_lock = not self.mouse_lock
+
+    def set_fov(self,fov):
+        self.fov = fov
 
     def update(self, dt):
         self.player.update(dt, self.keys)
@@ -191,15 +197,15 @@ class WindowUI(pyglet.window.Window):
             {"font": "Lucida Grande",
             "font_size": 12,
             "text_color": [255, 255, 255, 255],
-            "gui_color": [255, 0, 0, 255],
+            "gui_color": [255, 255, 255, 255],
             "button": {
+                "text_color": [0, 0, 0, 255],
                 "down": {
                     "image": {
                         "source": "button-down.png",
                         "frame": [8, 6, 2, 2],
                         "padding": [18, 18, 8, 6]
                         },
-                    "text_color": [0, 0, 0, 255]
                     },
                 "up": {
                     "image": {
@@ -233,16 +239,25 @@ class WindowUI(pyglet.window.Window):
                }
             }, resources_path='theme/')
 
+        label_fov = Label('Change FOV')
+        label_col = Label('Change Colour')
+
         button_reset = Button('RESET POS', on_press=self.callback)
 
         button_col = Button('CHANGE COL', on_press=self.change_col)
+
+
+        self.sliderFOV = HorizontalSlider(on_set=self.change_fov)
 
         self.sliderR = HorizontalSlider()
         self.sliderG = HorizontalSlider()
         self.sliderB = HorizontalSlider()
 
+        container_fov = VerticalContainer([label_fov, self.sliderFOV, button_reset])
+        container_col = VerticalContainer([label_col, self.sliderR, self.sliderG, self.sliderB, button_col])
+
         Manager(\
-            content=VerticalContainer([self.sliderR, self.sliderG, self.sliderB, button_col, button_reset]),
+            content=HorizontalContainer([container_fov, Spacer(25), container_col]),
             window=self,
             theme=self.theme,
             batch=self.batch)
@@ -253,11 +268,15 @@ class WindowUI(pyglet.window.Window):
         self.batch.draw()
 
     def callback(self,is_pressed):
+        self.window3D.set_fov(75)
         self.window3D.getPlayer().reset()
 
     def change_col(self,is_pressed):
         colvalRGB = [int(255*self.sliderR.value),int(255*self.sliderG.value),int(255*self.sliderB.value)]
         self.window3D.model.colors = colvalRGB*STEPS
+
+    def change_fov(self,is_pressed):
+        self.window3D.set_fov(int(65 + self.sliderFOV.value*45))
 
 
 if __name__ == '__main__':
@@ -267,7 +286,7 @@ if __name__ == '__main__':
     glEnable(GL_DEPTH_TEST)
 
 
-    windowUI = WindowUI(window3D,width=400, height=300, caption='UI',resizable=True)
+    windowUI = WindowUI(window3D,width=700, height=400, caption='UI',resizable=True)
 
 
     pyglet.app.run()
