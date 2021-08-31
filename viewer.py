@@ -104,13 +104,19 @@ class Player:
             self.pos[2] += dx*sens
         if keys[key.SPACE]:
             self.pos[1] += s
-        if keys[key.LSHIFT]:
+        if keys[key.LCTRL]:
             self.pos[1] -= s
 
     def reset(self):
         print(self.initpos)
         self.pos = self.initpos[:]
         self.rot = self.initrot[:]
+
+    def getPos(self):
+        return self.pos
+
+    def getRot(self):
+        return self.rot
 
 class Window3D(pyglet.window.Window):
 
@@ -160,7 +166,7 @@ class Window3D(pyglet.window.Window):
         self.fov=70
 
         self.model = line
-        self.player = Player((0.5,1.5,1.5),(-30,0))
+        self.player = Player((0,0,60),(0,0))
 
     def on_mouse_motion(self,x,y,dx,dy):
         if self.mouse_lock: self.player.mouse_motion(dx,dy)
@@ -241,6 +247,9 @@ class WindowUI(pyglet.window.Window):
 
         label_fov = Label('Change FOV')
         label_col = Label('Change Colour')
+        label_position = Label('Player position\nand view angle')
+        self.label_pos = Label('postionsplaceholder')
+        self.label_rot = Label('rotationplaceholder')
 
         button_reset = Button('RESET POS', on_press=self.callback)
 
@@ -253,19 +262,30 @@ class WindowUI(pyglet.window.Window):
         self.sliderG = HorizontalSlider()
         self.sliderB = HorizontalSlider()
 
+        container_pos = VerticalContainer([label_position, self.label_pos, self.label_rot])
         container_fov = VerticalContainer([label_fov, self.sliderFOV, button_reset])
         container_col = VerticalContainer([label_col, self.sliderR, self.sliderG, self.sliderB, button_col])
 
-        Manager(\
-            content=HorizontalContainer([container_fov, Spacer(25), container_col]),
+        self.manager = Manager(\
+            content=HorizontalContainer([Spacer(10),container_pos, Spacer(25),container_fov, Spacer(25), container_col]),
             window=self,
             theme=self.theme,
-            batch=self.batch)
+            batch=self.batch,
+            is_movable=False)
 
 
     def on_draw(self):
         self.clear()
         self.batch.draw()
+
+        self.update_labels()
+
+
+    def update_labels(self):
+        posinfo = ["{:.2f}".format(s) for s in self.window3D.player.getPos()]
+        rotinfo = ["{:.2f}".format(s) for s in self.window3D.player.getRot()]
+        self.label_pos.set_text("x: " + posinfo[0] + " y: " + posinfo[1] + " z: " + posinfo[2])
+        self.label_rot.set_text("V: " + rotinfo[0] + " H: " + rotinfo[1])
 
     def callback(self,is_pressed):
         self.window3D.set_fov(75)
@@ -278,15 +298,18 @@ class WindowUI(pyglet.window.Window):
     def change_fov(self,is_pressed):
         self.window3D.set_fov(int(65 + self.sliderFOV.value*45))
 
+    def on_close(self):
+        self.window3D.close()
+        self.close()
 
 if __name__ == '__main__':
 
-    window3D = Window3D(line, width=400, height=300, caption='Model',resizable=True)
+    window3D = Window3D(line, width=600, height=450, caption='Model',resizable=True)
     glClearColor(0.5,0.7,1,1)
     glEnable(GL_DEPTH_TEST)
 
 
-    windowUI = WindowUI(window3D,width=700, height=400, caption='UI',resizable=True)
+    windowUI = WindowUI(window3D,width=1000, height=400, caption='UI',resizable=True)
 
 
     pyglet.app.run()
