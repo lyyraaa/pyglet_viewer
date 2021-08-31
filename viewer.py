@@ -6,7 +6,7 @@ import math
 import pyglet_gui
 from pyglet_gui.theme import Theme
 from pyglet_gui.manager import Manager
-from pyglet_gui.buttons import Button
+from pyglet_gui.buttons import Button, OneTimeButton
 from pyglet_gui.containers import VerticalContainer, HorizontalContainer, Spacer
 from pyglet_gui.sliders import HorizontalSlider
 from pyglet_gui.gui import Label
@@ -108,7 +108,6 @@ class Player:
             self.pos[1] -= s
 
     def reset(self):
-        print(self.initpos)
         self.pos = self.initpos[:]
         self.rot = self.initrot[:]
 
@@ -251,9 +250,10 @@ class WindowUI(pyglet.window.Window):
         self.label_pos = Label('postionsplaceholder')
         self.label_rot = Label('rotationplaceholder')
 
-        button_reset = Button('RESET POS', on_press=self.callback)
+        button_reset = OneTimeButton('RESET POS', on_release=self.callback)
+        # FOR TOGGLE BUTTONS USE Button not OneTimeButton, and on_release -> on_press
 
-        button_col = Button('CHANGE COL', on_press=self.change_col)
+        button_col = OneTimeButton('CHANGE COL', on_release=self.change_col)
 
 
         self.sliderFOV = HorizontalSlider(on_set=self.change_fov)
